@@ -1,0 +1,183 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      String     @default("EDITOR")    // SUPER_ADMIN | ADMIN | EDITOR | VIEWER
+  status    String     @default("ACTIVE")    // ACTIVE | INACTIVE | SUSPENDED
+  avatar    String?
+
+  posts        Post[]
+  activityLogs ActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────
+// CATEGORY
+// ─────────────────────────────────────────────────
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  posts Post[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────────
+// TAG
+// ─────────────────────────────────────────────────
+
+model Tag {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  posts PostTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tags")
+}
+
+// ─────────────────────────────────────────────────
+// POST (Blog)
+// ─────────────────────────────────────────────────
+
+model Post {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  excerpt        String?
+  content        String
+  featuredImage  String?
+  status         String    @default("DRAFT")  // DRAFT | PUBLISHED | ARCHIVED
+  publishedAt    DateTime?
+
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  tags       PostTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+// ─────────────────────────────────────────────────
+// PAGE (Static CMS pages)
+// ─────────────────────────────────────────────────
+
+model Page {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  content        String
+  featuredImage  String?
+  status         String    @default("DRAFT")  // DRAFT | PUBLISHED | ARCHIVED
+
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pages")
+}
+
+// ─────────────────────────────────────────────────
+// MEDIA
+// ─────────────────────────────────────────────────
+
+model Media {
+  id        String @id @default(cuid())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int       // bytes
+  url       String
+  alt       String?
+
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("media")
+}
+
+// ─────────────────────────────────────────────────
+// SITE SETTINGS (key-value store)
+// ─────────────────────────────────────────────────
+
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+// ─────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String  @id @default(cuid())
+  userId     String?
+  user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String  // e.g. "CREATE_POST", "DELETE_USER"
+  entity     String  // e.g. "Post", "User"
+  entityId   String?
+  detail     String?
+
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
